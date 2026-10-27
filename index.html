@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library Management</title>
+<style>
+  :root { --bg: #f4f1ea; --card: #fff; --ink: #1c1c1e; --muted: #8a8a8e; --accent: #4f46e5; --accent2: #9333ea; --ok: #16a34a; --warn: #ea580c; --line: #efefef; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f0f13; --card: #1a1a20; --ink: #f2f2f3; --muted: #8e8e93; --accent: #818cf8; --accent2: #c084fc; --ok: #4ade80; --warn: #fb923c; --line: #2a2a31; }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 45%), radial-gradient(circle at 90% 100%, color-mix(in srgb, var(--accent2) 15%, transparent), transparent 45%), var(--bg); background-attachment: fixed; color: var(--ink); min-height: 100vh; margin: 0; padding: 3rem 1rem; }
+  main { max-width: 520px; margin: 0 auto; }
+  h1 { font-size: 2rem; font-weight: 700; letter-spacing: -.03em; margin: 0; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--muted); margin: .3rem 0 1.5rem; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-bottom: 1rem; }
+  .stat { background: var(--card); border-radius: 14px; padding: .8rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .stat b { display: block; font-size: 1.5rem; }
+  .stat span { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  form { display: flex; gap: .5rem; background: var(--card); padding: .4rem; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+  input { flex: 1; padding: .7rem .9rem; border: 0; background: none; color: var(--ink); font-size: 1rem; outline: none; }
+  button { padding: .55rem 1rem; border: 0; border-radius: 11px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: .85rem; font-weight: 500; cursor: pointer; transition: transform .15s, opacity .15s; }
+  button:hover { opacity: .9; transform: translateY(-1px); }
+  ul { list-style: none; padding: 0; margin: 1.2rem 0 0; background: var(--card); border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.08); overflow: hidden; }
+  li { display: flex; justify-content: space-between; align-items: center; padding: .9rem 1.1rem; border-bottom: 1px solid var(--line); transition: background .15s; }
+  li:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  li:last-child { border-bottom: 0; }
+  li > span:first-child { text-transform: capitalize; }
+  li > span:first-child::before { content: "📖"; margin-right: .6rem; }
+  li > span:first-child.out::before { content: "📕"; }
+  li button { background: none; color: var(--accent); padding: .3rem .55rem; }
+  li button:last-child { color: var(--muted); }
+  .out { color: var(--warn); }
+  footer { text-align: center; color: var(--muted); font-size: .75rem; margin-top: 1.5rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Library</h1>
+  <p class="sub">Add, borrow and return your books.</p>
+  <div class="stats">
+    <div class="stat"><b id="n-all">0</b><span>Total</span></div>
+    <div class="stat"><b id="n-in" style="color:var(--ok)">0</b><span>Available</span></div>
+    <div class="stat"><b id="n-out" style="color:var(--warn)">0</b><span>Borrowed</span></div>
+  </div>
+  <form id="f"><input id="t" placeholder="Add a book..." required><button>Add</button></form>
+  <ul id="list"></ul>
+  <footer>Powered by Java</footer>
+</main>
+<script>
+  let books = [];
+  const list = document.getElementById("list");
+  // every action goes to the Java server, which replies with the full book list
+  async function api(action, name = "") {
+    books = await (await fetch(`/api/${action}?n=${encodeURIComponent(name)}`)).json();
+    render();
+  }
+  function render() {
+    list.innerHTML = "";
+    books.forEach((b, i) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="${b.out ? "out" : ""}"></span><span><button>${b.out ? "Return" : "Borrow"}</button> <button>✕</button></span>`;
+      li.firstChild.textContent = b.name + (b.out ? " (borrowed)" : "");
+      const [toggle, del] = li.querySelectorAll("button");
+      toggle.onclick = () => api(b.out ? "return" : "borrow", b.name);
+      del.onclick = () => api("delete", b.name);
+      list.append(li);
+    });
+    const out = books.filter(b => b.out).length;
+    document.getElementById("n-all").textContent = books.length;
+    document.getElementById("n-in").textContent = books.length - out;
+    document.getElementById("n-out").textContent = out;
+  }
+  document.getElementById("f").onsubmit = e => {
+    e.preventDefault();
+    const t = document.getElementById("t");
+    api("add", t.value);
+    t.value = "";
+  };
+  api("list");
+</script>
+</body>
+</html>
